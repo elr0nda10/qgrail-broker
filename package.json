@@ -1,0 +1,32 @@
+{
+  "name": "qgrail-broker",
+  "version": "0.0.1",
+  "description": "Broker to connect each services in qgrail project.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/elr0nda10/qgrail-broker.git"
+  },
+  "keywords": [
+    "qbit",
+    "qgrail",
+    "broker",
+    "microservices"
+  ],
+  "author": "elr0nda10",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/elr0nda10/qgrail-broker/issues"
+  },
+  "homepage": "https://github.com/elr0nda10/qgrail-broker#readme",
+  "dependencies": {
+    "async": "^2.6.2",
+    "bluebird": "^3.5.4",
+    "csprng": "^0.1.2",
+    "msgpack-lite": "^0.1.26",
+    "zeromq": "^5.1.0"
+  }
+}
