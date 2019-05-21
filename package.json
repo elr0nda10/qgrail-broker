@@ -1,6 +1,6 @@
 {
   "name": "qgrail-broker",
-  "version": "0.0.1",
+  "version": "0.0.1a",
   "description": "Broker to connect each services in qgrail project.",
   "main": "index.js",
   "scripts": {
