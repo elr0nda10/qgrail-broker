@@ -1,6 +1,8 @@
 const zeromq = require("zeromq");
 const Promise = require("bluebird");
 
+const Async = require("async");
+
 const Protocol = require(__dirname + "/protocol");
 
 function Service(address, opt) {
@@ -8,10 +10,58 @@ function Service(address, opt) {
     this.worker = false;
     this.function_list = {};
     this.log = (opt && opt.log) || undefined;
-
+    this.queue = createQueue(this);
     process.on("SIGINT", () => {
         this.close();
     });
+}
+
+const createQueue = function(obj) {
+    return Async.priorityQueue((task, cb) => {
+        if(task.type === "input") {
+            processInput(obj, task);
+        }
+        else if(task.type === "output") {
+            processOutput(obj, task);
+        }
+        process.nextTick(cb);
+    });
+};
+
+const processInput = function(obj, task) {
+    const [id1, id2, delimiter, data] = task.frames;
+    const req = Protocol.decodeReq(data);
+
+    obj.log && obj.log("service-input", req);
+    let proc = null;
+    if(req.fn && obj.function_list[req.fn] && req.params) {
+        const fn = obj.function_list[req.fn];
+        proc = processFunction(fn, req);
+    }
+    else {
+        proc = processNotFoundFunction(req);
+    }
+
+    proc.then((output) => {
+            req.output = output;
+        })
+        .catch((err) => {
+            req.output = err;
+        })
+        .finally(() => {
+            obj.queue.push({
+                id1, id2, delimiter, req,
+                type: "output"
+            }, 1);
+        })
+};
+
+const processOutput = function(obj, task) {
+    obj.log && obj.log("service-output", task.req);
+
+    const bytes_sent = [task.id1, task.id2, task.delimiter];
+    bytes_sent.push(Protocol.encodeReq(task.req));
+    obj.worker.send(bytes_sent);
 }
 
 Service.prototype.func = function(name, fn) {
@@ -31,33 +81,10 @@ Service.prototype.listen = function(callback) {
 
     this.worker = zeromq.socket("router").bind(this.address);
     this.worker.on("message", (...frames) => {
-        const [id1, id2, delimiter, data] = frames;
-        const req = Protocol.decodeReq(data);
-        this.log && this.log("service-input", req);
-
-        let process = null;
-        if(req.fn && this.function_list[req.fn] && req.params) {
-            const fn = this.function_list[req.fn];
-            process = processFunction(fn, req);
-        }
-        else {
-            process = processNotFoundFunction(req);
-        }
-
-        process
-            .then((output) => {
-                req.output = output;
-            })
-            .catch((err) => {
-                req.output = err;
-            })
-            .finally(() => {
-                this.log && this.log("service-output", req);
-
-                const bytes_sent = [id1, id2, delimiter];
-                bytes_sent.push(Protocol.encodeReq(req));
-                this.worker.send(bytes_sent);
-            });
+        this.queue.push({
+            frames,
+            type: "input"
+        }, 2);
     });
 
     callback && callback();

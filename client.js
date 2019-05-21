@@ -2,14 +2,18 @@ const zeromq = require("zeromq");
 const Promise = require("bluebird");
 const Protocol = require(__dirname + "/protocol");
 
-function Client(broker_address, service_name) {
+function Client(broker_address, service_name, opt) {
     this.address = broker_address;
     this.service_name = service_name;
     this.promise_objects = {};
+    this.log = opt && opt.log;
     this.socket = zeromq.socket("dealer").connect(this.address);
-    socketListener(this.socket, this.promise_objects);
+    socketListener(this.socket, this.promise_objects, {log: this.log});
     process.on("SIGINT", () => {
-        this.socket.close();
+        if(this.socket) {
+            this.socket.close();
+            this.socket = undefined;
+        }
         this.promise_objects = undefined;
     });
 };
@@ -17,6 +21,7 @@ function Client(broker_address, service_name) {
 Client.prototype.invoke = function(fn, params) {
     return new Promise((resolve, reject) => {
         const req = Protocol.createReqObj(this.service_name, fn, params);
+        this.log && this.log("client-input", req);
         const req_id = req.header.id;
 
         this.promise_objects[req_id] = {
@@ -32,7 +37,7 @@ Client.prototype.invoke = function(fn, params) {
     });
 };
 
-const socketListener = function(socket, promise_objects) {
+const socketListener = function(socket, promise_objects, opt) {
     socket.on("message", (...outputs) => {
         try {
             const [delimiter, msg] = outputs;
@@ -40,6 +45,7 @@ const socketListener = function(socket, promise_objects) {
                 return;
             }
             const req = Protocol.decodeReq(msg);
+            opt.log && opt.log("client-output", req);
             const req_id = req.header.id;
 
             promise_objects[req_id].resolve(req.output);

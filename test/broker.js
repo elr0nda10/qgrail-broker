@@ -8,8 +8,7 @@ const broker = new Broker({
             name: "calc",
             upstream: [
                 "tcp://127.0.0.1:30001",
-                "tcp://127.0.0.1:30002",
-                "tcp://127.0.0.1:30003"
+                "tcp://127.0.0.1:30002"
             ]
         }
     ],
@@ -22,6 +21,7 @@ const broker = new Broker({
 process.on("SIGINT", () => {
     console.log("BROKER TERMINATED");
     broker.close();
+    process.exit(0);
 });
 
 

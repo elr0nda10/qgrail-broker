@@ -1,7 +1,8 @@
 const QBroker = require(__dirname + "/../");
 const Client = QBroker.Client;
 
-const ClientCalc = new Client("tcp://127.0.0.1:30000", "calc");
+const ClientCalc = new Client("tcp://127.0.0.1:30000", "calc", {
+});
 let totalProcessed = 0;
 
 const sent = function(a, b) {
@@ -20,17 +21,12 @@ const sent = function(a, b) {
 };
 
 process.on("SIGINT", () => {
-    if(totalProcessed === 20000) {
-        console.log("OK");
-    }
-    else {
-        console.log("NOT OK: ", (20000 - totalProcessed));
-    }
-})
+    console.log("Total Processed: ", totalProcessed);
+    process.exit(0);
+});
 
-for(let a = 0; a < 10; a++) {
-    for(let b = 0; b < 1000; b++) {
+for(let a = 0; a < 100; ++a) {
+    for(let b = 0; b < 100; ++b) {
         sent(a, b);
     }
 }
-
